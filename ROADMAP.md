@@ -38,12 +38,38 @@ Measured so far (against the live API):
 - Token lifetime is still unknown; `tools/probe_electrica.py tokentest` records
   a token with a timestamp and re-checks it on later runs to measure it.
 
+Confirmed by inspecting the official Android app (v4.0.4):
+
+- Its login response carries **only** `{error, message, app_token}` — there is
+  **no refresh token and no expiry field** anywhere in the API. So there is no
+  refresh mechanism to adopt; the only choice is token-until-it-dies (then
+  reauth) or storing the password for unattended re-login.
+- The app's own login is `/api/login-mobile`, which differs from the web
+  `/api/login` only by an extra `versiune` (version) field. Same response shape,
+  so nothing is gained by switching.
+
 - [ ] Decide based on the measured lifetime:
       - **long-lived** → store only the token; drop the password after setup and
         send the user through the existing reauth flow when it finally expires.
       - **short-lived** → keep the password (unattended re-login is required),
         and document plainly that `.storage` must be protected.
 - [ ] Either way: never log the token, and keep it redacted in diagnostics.
+- [ ] **Revoke the token on unload/removal** via `POST /api/logout/current`, so a
+      removed integration does not leave a live session behind. Cheap, and the
+      single clearest security win available.
+
+### Endpoints known but deliberately unused
+
+Discovered while mapping the API; recorded so nobody re-investigates them:
+
+- `/api/download/sap/…`, `/api/download/open/…` — invoice PDF fetch (we already
+  surface `DownloadPDFUrl`).
+- `/api/gdpr`, `/api/gdpr/{client_code}` — personal-data export.
+- `/api/adauga-cod-client`, `/api/electronic-mail-options` — account admin.
+- **Never implement:** `/api/request-plata` (initiates a payment),
+  `/api/modifica-parola`, `/api/solicitare-resetare-parola`, `/api/sterge-cont`
+  (deletes the account). A home-automation integration must not move money or
+  perform destructive account operations.
 
 ### Features
 
