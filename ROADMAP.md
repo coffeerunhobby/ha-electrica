@@ -1,6 +1,10 @@
 # Roadmap
 
-## v0.2.0 — multi-NLC correctness, Romanian UX, docs
+## v0.2.0 — credential hardening (shipped)
+
+Password is now encrypted at rest; see *Credential handling* below.
+
+## v0.3.0 — multi-NLC correctness, Romanian UX, docs
 
 ### Correctness (highest priority)
 
@@ -48,11 +52,20 @@ Confirmed by inspecting the official Android app (v4.0.4):
   `/api/login` only by an extra `versiune` (version) field. Same response shape,
   so nothing is gained by switching.
 
+- [x] **Encrypt the stored password at rest** (shipped in 0.2.0). Fernet
+      (AES-128-CBC + HMAC-SHA256) via `cryptography`, which HA core already
+      requires, so no dependency was added. The key lives in its own store
+      (`.storage/electrica_key`), separate from the ciphertext in
+      `core.config_entries`, so leaking one file is not enough. Entries from
+      0.1.0 migrate in place; an undecryptable value raises
+      `ConfigEntryAuthFailed` so the user is offered reauth. This is defence in
+      depth against *partial* exposure — not a security boundary against an
+      attacker with full filesystem access.
 - [ ] Decide based on the measured lifetime:
       - **long-lived** → store only the token; drop the password after setup and
         send the user through the existing reauth flow when it finally expires.
-      - **short-lived** → keep the password (unattended re-login is required),
-        and document plainly that `.storage` must be protected.
+      - **short-lived** → keep the (now encrypted) password, since unattended
+        re-login is required.
 - [ ] Either way: never log the token, and keep it redacted in diagnostics.
 - [ ] **Revoke the token on unload/removal** via `POST /api/logout/current`, so a
       removed integration does not leave a live session behind. Cheap, and the
