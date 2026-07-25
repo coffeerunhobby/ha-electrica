@@ -179,3 +179,6 @@ automat din datele de diagnosticare.
 ## Licență
 
 [MIT](LICENSE)
+
+Vezi și [THIRD_PARTY_NOTICES.md](custom_components/electrica/THIRD_PARTY_NOTICES.md)
+pentru atribuiri și mențiuni de mărci comerciale.
