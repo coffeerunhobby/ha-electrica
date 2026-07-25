@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, time
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -42,6 +43,27 @@ class ElectricaSensorDescription(SensorEntityDescription):
 
     value_fn: Callable[[PointData], Any]
     attrs_fn: Callable[[PointData], dict[str, Any]] | None = None
+    # Optional per-state icon, e.g. to flag an overdue due date.
+    icon_fn: Callable[[PointData], str | None] | None = None
+
+
+def _due_datetime(point: PointData) -> datetime | None:
+    """The latest invoice's due date as a timezone-aware datetime.
+
+    Reported as a ``timestamp`` sensor so Home Assistant renders it as
+    "in 3 days" / "5 days ago" — an overdue invoice then reads at a glance
+    without any frontend styling, which an integration cannot control.
+    """
+    invoice = point.latest_invoice
+    if invoice is None or invoice.due_date is None:
+        return None
+    return datetime.combine(invoice.due_date, time.min).replace(
+        tzinfo=dt_util.DEFAULT_TIME_ZONE
+    )
+
+
+def _due_icon(point: PointData) -> str:
+    return "mdi:calendar-alert" if point.unpaid_invoices else "mdi:calendar-clock"
 
 
 def _invoice_attrs(point: PointData) -> dict[str, Any]:
@@ -120,7 +142,17 @@ SENSORS: tuple[ElectricaSensorDescription, ...] = (
         key="due_date",
         translation_key="due_date",
         icon="mdi:calendar-clock",
+        # Plain ISO text, kept stable for templates and automations.
         value_fn=lambda p: _iso(p.latest_invoice.due_date) if p.latest_invoice else None,
+        icon_fn=_due_icon,
+    ),
+    ElectricaSensorDescription(
+        key="due_date_timestamp",
+        translation_key="due_date_timestamp",
+        icon="mdi:calendar-clock",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=_due_datetime,
+        icon_fn=_due_icon,
     ),
     ElectricaSensorDescription(
         key="overdue",
@@ -249,6 +281,15 @@ class ElectricaSensor(CoordinatorEntity[ElectricaCoordinator], SensorEntity):
     def native_value(self) -> Any:
         point = self._point
         return self.entity_description.value_fn(point) if point else None
+
+    @property
+    def icon(self) -> str | None:
+        """Allow the icon to reflect state (e.g. an overdue due date)."""
+        point = self._point
+        icon_fn = self.entity_description.icon_fn
+        if point is not None and icon_fn is not None:
+            return icon_fn(point)
+        return super().icon
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:

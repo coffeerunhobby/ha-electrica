@@ -41,20 +41,51 @@
   },
   "entity": {
     "sensor": {
-      "amount_due": { "name": "Amount due" },
-      "last_invoice": { "name": "Last invoice" },
-      "due_date": { "name": "Due date" },
-      "overdue": { "name": "Overdue" },
-      "meter_index": { "name": "Meter index" },
-      "self_reading": { "name": "Self-reading window" },
-      "annual_convention": { "name": "Agreed annual consumption" },
-      "last_payment": { "name": "Last payment" }
+      "amount_due": {
+        "name": "Amount due"
+      },
+      "last_invoice": {
+        "name": "Last invoice"
+      },
+      "due_date": {
+        "name": "Due date"
+      },
+      "due_date_timestamp": {
+        "name": "Due date (relative)"
+      },
+      "overdue": {
+        "name": "Overdue"
+      },
+      "meter_index": {
+        "name": "Meter index"
+      },
+      "self_reading": {
+        "name": "Self-reading window"
+      },
+      "annual_convention": {
+        "name": "Agreed annual consumption"
+      },
+      "last_payment": {
+        "name": "Last payment"
+      }
     },
     "number": {
-      "reading_to_submit": { "name": "Reading to submit" }
+      "reading_to_submit": {
+        "name": "Reading to submit"
+      }
     },
     "button": {
-      "submit_reading": { "name": "Submit reading" }
+      "submit_reading": {
+        "name": "Submit reading"
+      }
+    },
+    "binary_sensor": {
+      "overdue": {
+        "name": "Overdue"
+      },
+      "self_reading_open": {
+        "name": "Self-reading open"
+      }
     }
   }
 }
