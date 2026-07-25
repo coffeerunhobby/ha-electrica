@@ -1,0 +1,10 @@
+{
+  "_comment": "Copy this to .electrica_creds.json (gitignored) and fill in real values. Never commit the real file.",
+  "accounts": [
+    {
+      "label": "primary",
+      "username": "you@example.com",
+      "password": "your-password-here"
+    }
+  ]
+}
