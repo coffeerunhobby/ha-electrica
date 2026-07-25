@@ -73,14 +73,14 @@ def test_self_reading_window_is_not_a_problem_class():
 
 # ── Relative due date ───────────────────────────────────────────────────────
 def test_due_date_timestamp_is_timezone_aware():
-    value = _due_datetime(_point())
+    value = _due_datetime(_point(unpaid=15.15))
     assert value is not None
     assert value.tzinfo is not None  # HA requires tz-aware timestamps
     assert (value.year, value.month, value.day) == (2026, 7, 29)
 
 
 def test_due_date_timestamp_handles_missing_dates():
-    assert _due_datetime(_point(due=None)) is None
+    assert _due_datetime(_point(unpaid=15.15, due=None)) is None
     assert _due_datetime(PointData(nlc=NLC, client_code=NLC)) is None
 
 
@@ -89,9 +89,32 @@ def test_due_icon_flags_an_unpaid_invoice():
     assert _due_icon(_point(unpaid=0.0)) == "mdi:calendar-clock"
 
 
-def test_plain_due_date_sensor_is_unchanged_for_backwards_compatibility():
-    # Templates relying on the ISO text must keep working; the timestamp form
-    # is a separate entity.
+def test_plain_due_date_reports_the_next_deadline_as_iso_text():
     plain = next(d for d in SENSORS if d.key == "due_date")
-    assert plain.device_class is None
-    assert plain.value_fn(_point()) == "2026-07-29"
+    assert plain.device_class is None  # still plain text, not a timestamp
+    assert plain.value_fn(_point(unpaid=15.15)) == "2026-07-29"
+
+
+def test_due_dates_are_empty_once_everything_is_paid():
+    # A settled account must not read like a missed payment ("23 hours ago").
+    paid = _point(unpaid=0.0)
+    plain = next(d for d in SENSORS if d.key == "due_date")
+    assert plain.value_fn(paid) is None
+    assert _due_datetime(paid) is None
+
+
+def test_due_date_picks_the_earliest_unpaid_invoice():
+    point = _point(unpaid=15.15)
+    point.invoices.append(
+        Invoice(
+            invoice_id="900000002",
+            fiscal_number="FF-0002",
+            issue_date=date(2026, 8, 14),
+            due_date=date(2026, 8, 29),
+            total=20.0,
+            unpaid=20.0,
+            status="neachitat",
+        )
+    )
+    # The later invoice is newer, but the earlier deadline is the one that counts.
+    assert _due_datetime(point).date() == date(2026, 7, 29)

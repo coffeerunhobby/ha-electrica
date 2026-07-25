@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import date, datetime, time
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -47,19 +47,30 @@ class ElectricaSensorDescription(SensorEntityDescription):
     icon_fn: Callable[[PointData], str | None] | None = None
 
 
+def _next_due_date(point: PointData) -> date | None:
+    """The next payment deadline: the earliest **unpaid** invoice's due date.
+
+    ``None`` once everything is settled. Reporting the latest invoice's date
+    regardless of payment made a fully paid account read as "23 hours ago",
+    which looks like a missed payment when nothing is owed.
+    """
+    dated = [inv for inv in point.unpaid_invoices if inv.due_date]
+    if not dated:
+        return None
+    return min(dated, key=lambda inv: inv.due_date).due_date
+
+
 def _due_datetime(point: PointData) -> datetime | None:
-    """The latest invoice's due date as a timezone-aware datetime.
+    """:func:`_next_due_date` as a timezone-aware datetime.
 
     Reported as a ``timestamp`` sensor so Home Assistant renders it as
-    "in 3 days" / "5 days ago" — an overdue invoice then reads at a glance
-    without any frontend styling, which an integration cannot control.
+    "in 3 days" / "5 days ago", making a real deadline obvious without any
+    frontend styling, which an integration cannot control.
     """
-    invoice = point.latest_invoice
-    if invoice is None or invoice.due_date is None:
+    due = _next_due_date(point)
+    if due is None:
         return None
-    return datetime.combine(invoice.due_date, time.min).replace(
-        tzinfo=dt_util.DEFAULT_TIME_ZONE
-    )
+    return datetime.combine(due, time.min).replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
 
 
 def _due_icon(point: PointData) -> str:
@@ -142,8 +153,8 @@ SENSORS: tuple[ElectricaSensorDescription, ...] = (
         key="due_date",
         translation_key="due_date",
         icon="mdi:calendar-clock",
-        # Plain ISO text, kept stable for templates and automations.
-        value_fn=lambda p: _iso(p.latest_invoice.due_date) if p.latest_invoice else None,
+        # ISO text form of the next payment deadline.
+        value_fn=lambda p: _iso(_next_due_date(p)),
         icon_fn=_due_icon,
     ),
     ElectricaSensorDescription(
