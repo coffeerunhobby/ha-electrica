@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant
 from .const import CONF_PASSWORD
 from .coordinator import ElectricaConfigEntry, ElectricaCoordinator
 from .crypto import ElectricaCipher, is_encrypted
+from .store import ElectricaReadingStore
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -59,6 +60,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ElectricaConfigEntry) -
     if unload_ok and (coordinator := entry.runtime_data) is not None:
         await coordinator.async_shutdown()
     return unload_ok
+
+
+async def async_remove_entry(
+    hass: HomeAssistant, entry: ElectricaConfigEntry
+) -> None:
+    """Delete locally stored readings and the encryption key on removal."""
+    await ElectricaReadingStore(hass, entry.entry_id).async_remove()
 
 
 async def _async_reload_entry(hass: HomeAssistant, entry: ElectricaConfigEntry) -> None:

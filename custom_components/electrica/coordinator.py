@@ -29,6 +29,7 @@ from .const import (
 from .crypto import ElectricaCipher, is_encrypted
 from .models import PointData
 from .statistics import async_update_consumption_statistics
+from .store import ElectricaReadingStore, merge_readings
 from .parser import (
     apply_hierarchy,
     parse_contract,
@@ -62,6 +63,8 @@ class ElectricaCoordinator(DataUpdateCoordinator[dict[str, PointData]]):
         )
         self._interval_hours = hours
         self.api: ElectricaApiClient | None = None
+        # Locally recorded readings + which PAC windows were submitted.
+        self.reading_store: ElectricaReadingStore | None = None
 
     def settings_changed(self) -> bool:
         current = int(
@@ -112,7 +115,28 @@ class ElectricaCoordinator(DataUpdateCoordinator[dict[str, PointData]]):
         except (ElectricaConnectionError, ElectricaError) as err:
             raise UpdateFailed(str(err)) from err
 
+    async def _ensure_store(self) -> ElectricaReadingStore:
+        if self.reading_store is None:
+            self.reading_store = ElectricaReadingStore(
+                self.hass, self.config_entry.entry_id
+            )
+            await self.reading_store.async_load()
+        return self.reading_store
+
+    def async_update_statistics(self, nlc: str) -> None:
+        """Re-import the statistics for one point (after a local reading)."""
+        point = (self.data or {}).get(nlc)
+        if point is None or self.reading_store is None:
+            return
+        async_update_consumption_statistics(
+            self.hass,
+            nlc,
+            point.address or nlc,
+            merge_readings(point.readings, self.reading_store.local_readings(nlc)),
+        )
+
     async def _fetch(self, api: ElectricaApiClient) -> dict[str, PointData]:
+        store = await self._ensure_store()
         hierarchy = await api.async_get_hierarchy()
         points = api.extract_points(hierarchy)
         if not points:
@@ -165,7 +189,10 @@ class ElectricaCoordinator(DataUpdateCoordinator[dict[str, PointData]]):
 
             # Meter index → Energy Dashboard (interpolated to daily points).
             async_update_consumption_statistics(
-                self.hass, point.nlc, data.address or point.nlc, data.readings
+                self.hass,
+                point.nlc,
+                data.address or point.nlc,
+                merge_readings(data.readings, store.local_readings(point.nlc)),
             )
 
             result[point.nlc] = data

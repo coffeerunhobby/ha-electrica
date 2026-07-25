@@ -91,16 +91,40 @@ Dashboard** și în cardul **Statistics Graph**, fără carduri suplimentare.
 1. Setează valoarea pe entitatea **`Reading to submit`**.
 2. Apasă **`Submit reading`**.
 
-Butonul este **indisponibil în afara perioadei de autocitire** și refuză
-trimiterea dacă:
+Butonul poate fi apăsat **oricând**, nu doar în perioada de autocitire:
 
-- fereastra de autocitire este închisă,
-- nu se cunoaște seria contorului,
-- nu ai setat o valoare, sau
-- indexul este **mai mic decât ultima citire** (contorul nu merge înapoi).
+| Ce faci | Ce se întâmplă |
+| --- | --- |
+| Apeși în perioada de autocitire, prima dată | Indexul e salvat local **și trimis la Electrica** |
+| Apeși din nou în aceeași perioadă | Doar salvat local — **nu se retrimite** la Electrica |
+| Apeși în afara perioadei | Doar salvat local |
 
-> ⚠️ Autocitirea ajunge la contul tău real de utilități. Verifică valoarea
-> înainte de a apăsa butonul. Integrarea **nu trimite niciodată automat**.
+Electrica acceptă o singură autocitire per perioadă, așa că integrarea ține
+evidența perioadelor deja trimise (după data de final a ferestrei) și nu
+repetă cererea.
+
+**De ce contează:** Electrica citește contorul o dată la 2–3 luni, deci
+graficul de consum ar avea foarte puține puncte. Fiecare apăsare adaugă un
+punct local, așa că poți citi contorul oricât de des vrei și graficul devine
+mai detaliat — independent de ce stochează Electrica.
+
+Trimiterea este refuzată dacă:
+
+- nu ai setat o valoare,
+- indexul este **mai mic decât ultima citire** (locală sau oficială — contorul
+  nu merge înapoi), sau
+- nu se cunoaște seria contorului (doar pentru trimiterea propriu-zisă).
+
+> ℹ️ Atributele butonului arată exact ce va face următoarea apăsare:
+> `will_submit_to_electrica`, `window_open`,
+> `already_submitted_this_window` și `local_readings`.
+
+> ⚠️ Autocitirea trimisă ajunge la contul tău real de utilități. Verifică
+> valoarea înainte de a apăsa. Integrarea **nu trimite niciodată automat**.
+
+> 📈 Citirile locale sunt combinate cu cele oficiale în graficul de consum. Dacă
+> Electrica publică ulterior o citire pentru aceeași zi, **cea oficială are
+> prioritate** — citirea locală rămâne doar o estimare între două citiri reale.
 
 ### Card pentru dashboard
 

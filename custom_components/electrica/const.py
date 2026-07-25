@@ -36,6 +36,8 @@ STORAGE_VERSION: Final = 1
 # The password-encryption key lives in its own store, deliberately separate from
 # the config entry holding the ciphertext, so leaking one file is not enough.
 STORAGE_KEY_SECRET: Final = f"{DOMAIN}_key"
+# Locally recorded meter readings plus which PAC windows have been submitted.
+STORAGE_KEY_READINGS: Final = f"{DOMAIN}_readings"
 
 # ── Electrica REST API ──────────────────────────────────────────────────────
 # The myelectrica.ro portal is backed by a plain JSON API secured with a bearer
