@@ -22,7 +22,8 @@ de a **trimite autocitirea** direct din Home Assistant.
   contorului, fereastra de autocitire, consumul convenit și ultima plată.
 - **Consumul apare nativ în Energy Dashboard** (statistici pe termen lung).
 - **Trimitere autocitire** din Home Assistant, cu verificări de siguranță.
-- Istoric complet (facturi, plăți, citiri) disponibil ca atribute.
+- Istoric disponibil ca atribute: toate citirile de contor returnate de API,
+  plus ultimele 12 facturi și ultimele 12 plăți.
 
 ---
 

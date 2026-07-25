@@ -1,5 +1,4 @@
-# ── Secrets / personal data — NEVER commit ──────────────────────────────────
-# Dev probe credentials and cached sessions (real accounts, GDPR).
+# Dev
 tools/.electrica_creds.json
 tools/.electrica_state.json
 tools/*.html
@@ -8,10 +7,10 @@ tools/*.json
 .env
 secrets.yaml
 
-# Reference material from other projects (not ours to redistribute).
+# Reference materials
 assets/
 
-# ── Python ──────────────────────────────────────────────────────────────────
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -23,7 +22,7 @@ venv/
 .coverage
 htmlcov/
 
-# ── Editors / OS ────────────────────────────────────────────────────────────
+# Editors / OS
 .vscode/
 .idea/
 .DS_Store
