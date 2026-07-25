@@ -277,12 +277,31 @@ class ElectricaApiClient:
             )
         )
 
-    async def async_set_index(self, payload: dict[str, Any]) -> Any:
-        """Submit a self-read meter index.
+    async def async_set_index(
+        self,
+        nlc: str,
+        meter_serial: str,
+        register_code: str,
+        index: float | int | str,
+    ) -> Any:
+        """Submit a self-read meter index ("autocitire").
 
-        Deliberately takes the payload verbatim: this is the only write the
-        integration performs, so the caller stays explicit about what is sent.
+        This is the only write the integration performs. Callers are expected to
+        have validated the value first (see the button/service, which refuse to
+        submit outside the PAC window or below the last known index).
         """
+        payload = {
+            "NLC": nlc,
+            "to_Contor": [
+                {
+                    "SerieContor": meter_serial,
+                    "to_Cadran": [
+                        {"RegisterCode": register_code, "Index": str(index)}
+                    ],
+                }
+            ],
+        }
+        _LOGGER.debug("Submitting self-read index for NLC %s", nlc)
         return await self._post(SET_INDEX_URL, payload)
 
     # ── Convenience ─────────────────────────────────────────────────────────

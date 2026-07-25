@@ -1,0 +1,60 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Electrica România",
+        "description": "Sign in with your myelectrica.ro account.",
+        "data": {
+          "username": "E-mail",
+          "password": "Password",
+          "update_interval": "Update interval (hours)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate Electrica",
+        "description": "Your Electrica session is no longer valid. Enter the password again.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid e-mail or password.",
+      "cannot_connect": "Could not reach the Electrica API. Try again.",
+      "no_points": "No consumption point (NLC) was found on this account.",
+      "unknown": "Unexpected error. Please try again."
+    },
+    "abort": {
+      "already_configured": "This Electrica account is already configured.",
+      "reauth_successful": "Re-authentication was successful."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Electrica options",
+        "data": {
+          "update_interval": "Update interval (hours)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "amount_due": { "name": "Amount due" },
+      "last_invoice": { "name": "Last invoice" },
+      "due_date": { "name": "Due date" },
+      "overdue": { "name": "Overdue" },
+      "meter_index": { "name": "Meter index" },
+      "self_reading": { "name": "Self-reading window" },
+      "annual_convention": { "name": "Agreed annual consumption" },
+      "last_payment": { "name": "Last payment" }
+    },
+    "number": {
+      "reading_to_submit": { "name": "Reading to submit" }
+    },
+    "button": {
+      "submit_reading": { "name": "Submit reading" }
+    }
+  }
+}
