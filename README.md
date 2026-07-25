@@ -102,6 +102,70 @@ trimiterea dacă:
 > ⚠️ Autocitirea ajunge la contul tău real de utilități. Verifică valoarea
 > înainte de a apăsa butonul. Integrarea **nu trimite niciodată automat**.
 
+### Card pentru dashboard
+
+Înlocuiește `1234567890` cu NLC-ul tău (îl vezi în **Developer Tools → States**,
+caută `electrica`).
+
+```yaml
+type: entities
+title: Autocitire Electrica
+entities:
+  - entity: sensor.electrica_1234567890_self_reading
+    name: Perioadă autocitire
+  - entity: sensor.electrica_1234567890_meter_index
+    name: Ultimul index înregistrat
+  - type: divider
+  - entity: number.electrica_1234567890_reading_to_submit
+    name: Index de trimis
+  - entity: button.electrica_1234567890_submit_reading
+    name: Trimite indexul
+```
+
+Butonul apare gri în afara perioadei de autocitire — este intenționat.
+
+### Notificare când se deschide perioada de autocitire
+
+Cea mai utilă automatizare: perioada durează câteva zile, iar dacă o ratezi
+factura se estimează.
+
+```yaml
+automation:
+  - alias: "Electrica — s-a deschis autocitirea"
+    triggers:
+      - trigger: state
+        entity_id: sensor.electrica_1234567890_self_reading
+        to: "open"
+    actions:
+      - action: notify.mobile_app_telefonul_meu
+        data:
+          title: "Electrica — trimite indexul"
+          message: >-
+            Autocitirea este deschisă până la
+            {{ state_attr('sensor.electrica_1234567890_self_reading', 'window_end') }}.
+            Ultimul index: {{ states('sensor.electrica_1234567890_meter_index') }} kWh.
+```
+
+### Card cu buton mare (opțional)
+
+Dacă vrei un buton separat, vizibil doar cât e deschisă perioada:
+
+```yaml
+type: conditional
+conditions:
+  - condition: state
+    entity: sensor.electrica_1234567890_self_reading
+    state: "open"
+card:
+  type: button
+  entity: button.electrica_1234567890_submit_reading
+  name: Trimite indexul
+  icon: mdi:send-clock
+  show_state: false
+```
+
+> 💡 Introdu întâi valoarea în *Index de trimis*, verific-o, apoi apasă butonul.
+
 ---
 
 ## Confidențialitate
