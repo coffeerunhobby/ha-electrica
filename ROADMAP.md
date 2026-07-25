@@ -24,14 +24,18 @@ Password is now encrypted at rest; see *Credential handling* below.
 
 ### Credential handling
 
-Goal: stop persisting the account password once setup has completed.
+Goal: reduce what an exposed Home Assistant configuration reveals.
 
-Home Assistant stores config-entry data in plaintext in `.storage`, and any
-local encryption would need its key on the same machine — so encrypting the
-password there is obfuscation, not protection. The meaningful improvement is to
-**store a session token instead of the password**: a leaked token is scoped to
-Electrica and is invalidated by a password change, whereas a leaked password may
-unlock unrelated accounts through password reuse.
+Home Assistant stores config-entry data as plaintext JSON in `.storage`, and an
+integration must replay the password unattended, so any local key sits on the
+same machine. Encryption there is therefore **defence in depth against partial
+exposure** (a shared `core.config_entries`, a single-file backup, a diagnostics
+dump) rather than a boundary against full filesystem access — and it is worth
+having precisely because passwords get reused across unrelated accounts.
+
+The complementary improvement is to **store a session token instead of the
+password**, so a leak is scoped to Electrica and revocable. That depends on how
+long tokens live, which is still being measured.
 
 Measured so far (against the live API):
 
