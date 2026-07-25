@@ -1,8 +1,12 @@
 {
   "domain": "electrica",
   "name": "Electrica România",
-  "after_dependencies": ["recorder"],
-  "codeowners": ["@coffeerunhobby"],
+  "after_dependencies": [
+    "recorder"
+  ],
+  "codeowners": [
+    "@coffeerunhobby"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/coffeerunhobby/ha-electrica",
@@ -10,5 +14,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/coffeerunhobby/ha-electrica/issues",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.1.1"
 }

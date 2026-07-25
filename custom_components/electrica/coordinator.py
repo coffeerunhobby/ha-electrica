@@ -26,6 +26,7 @@ from .const import (
     DEFAULT_UPDATE_INTERVAL_HOURS,
     DOMAIN,
 )
+from .crypto import ElectricaCipher, is_encrypted
 from .models import PointData
 from .statistics import async_update_consumption_statistics
 from .parser import (
@@ -70,11 +71,28 @@ class ElectricaCoordinator(DataUpdateCoordinator[dict[str, PointData]]):
         )
         return current != self._interval_hours
 
-    def _ensure_api(self) -> ElectricaApiClient:
+    async def _async_password(self) -> str:
+        """Return the account password, decrypting it when stored encrypted."""
+        stored = self.config_entry.data[CONF_PASSWORD]
+        if not is_encrypted(stored):
+            return stored
+        cipher = await ElectricaCipher.async_load(self.hass)
+        if cipher is None:
+            raise ConfigEntryAuthFailed(
+                "The stored password is encrypted but cryptography is unavailable"
+            )
+        try:
+            return cipher.decrypt(stored)
+        except ValueError as err:
+            # Typically a restored backup without the matching key file — send
+            # the user through reauth rather than failing forever.
+            raise ConfigEntryAuthFailed(str(err)) from err
+
+    async def _async_ensure_api(self) -> ElectricaApiClient:
         if self.api is None:
             self.api = ElectricaApiClient(
                 self.config_entry.data[CONF_USERNAME],
-                self.config_entry.data[CONF_PASSWORD],
+                await self._async_password(),
                 session=async_get_clientsession(self.hass),
             )
         return self.api
@@ -86,7 +104,7 @@ class ElectricaCoordinator(DataUpdateCoordinator[dict[str, PointData]]):
         await super().async_shutdown()
 
     async def _async_update_data(self) -> dict[str, PointData]:
-        api = self._ensure_api()
+        api = await self._async_ensure_api()
         try:
             return await self._fetch(api)
         except ElectricaAuthError as err:

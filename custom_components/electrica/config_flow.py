@@ -43,6 +43,7 @@ from .const import (
     MIN_UPDATE_INTERVAL_HOURS,
 )
 from .coordinator import ElectricaConfigEntry
+from .crypto import ElectricaCipher
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -74,6 +75,17 @@ def _user_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             ): _INTERVAL_SELECTOR,
         }
     )
+
+
+async def _store_password(hass, password: str) -> str:
+    """Encrypt the password for storage, falling back to plaintext.
+
+    Home Assistant persists config entries as plaintext JSON, so this protects
+    against partial exposure (a shared `core.config_entries`, a single-file
+    backup) rather than against full filesystem access — see crypto.py.
+    """
+    cipher = await ElectricaCipher.async_load(hass)
+    return cipher.encrypt(password) if cipher else password
 
 
 async def _validate(hass, username: str, password: str) -> int:
@@ -122,7 +134,9 @@ class ElectricaConfigFlow(ConfigFlow, domain=DOMAIN):
                         title=f"Electrica — {username}",
                         data={
                             CONF_USERNAME: username,
-                            CONF_PASSWORD: user_input[CONF_PASSWORD],
+                            CONF_PASSWORD: await _store_password(
+                                self.hass, user_input[CONF_PASSWORD]
+                            ),
                             CONF_UPDATE_INTERVAL: int(
                                 user_input.get(
                                     CONF_UPDATE_INTERVAL,
@@ -160,7 +174,12 @@ class ElectricaConfigFlow(ConfigFlow, domain=DOMAIN):
             else:
                 return self.async_update_reload_and_abort(
                     entry,
-                    data={**entry.data, CONF_PASSWORD: user_input[CONF_PASSWORD]},
+                    data={
+                        **entry.data,
+                        CONF_PASSWORD: await _store_password(
+                            self.hass, user_input[CONF_PASSWORD]
+                        ),
+                    },
                 )
 
         return self.async_show_form(

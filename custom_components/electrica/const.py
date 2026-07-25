@@ -31,6 +31,12 @@ MAX_HISTORY_LIMIT: Final = 24
 
 CURRENCY_RON: Final = "RON"
 
+# ── Local storage ───────────────────────────────────────────────────────────
+STORAGE_VERSION: Final = 1
+# The password-encryption key lives in its own store, deliberately separate from
+# the config entry holding the ciphertext, so leaking one file is not enough.
+STORAGE_KEY_SECRET: Final = f"{DOMAIN}_key"
+
 # ── Electrica REST API ──────────────────────────────────────────────────────
 # The myelectrica.ro portal is backed by a plain JSON API secured with a bearer
 # token obtained from /login (no 2FA), so unlike a scraped portal the payloads
