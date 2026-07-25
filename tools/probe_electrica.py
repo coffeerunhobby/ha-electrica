@@ -219,6 +219,64 @@ async def _cmd_probe(label: str | None, raw: bool) -> None:
         await client.close()
 
 
+TOKEN_TEST_FILE = os.path.join(HERE, ".electrica_token_test.json")
+
+
+async def _cmd_tokentest(label: str | None) -> None:
+    """Measure how long an app_token stays valid.
+
+    First run stores a freshly-issued token with a timestamp; later runs replay
+    that same token and report whether it still works, and how old it is. This
+    decides whether the integration can store only a token instead of the
+    account password.
+    """
+    import datetime as _dt
+
+    import aiohttp
+
+    from electricaprobe.const import HIERARCHY_URL  # type: ignore
+
+    if os.path.exists(TOKEN_TEST_FILE):
+        with open(TOKEN_TEST_FILE, encoding="utf-8") as fh:
+            saved = json.load(fh)
+        issued = _dt.datetime.fromisoformat(saved["issued_at"])
+        age = _dt.datetime.now(_dt.timezone.utc) - issued
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                HIERARCHY_URL,
+                headers={
+                    "Authorization": f"Bearer {saved['token']}",
+                    "Accept": "application/json",
+                },
+            ) as resp:
+                body = await resp.json(content_type=None)
+                alive = resp.status == 200 and body.get("error") is False
+        hours = age.total_seconds() / 3600
+        print(f"stored token age: {age.days}d {hours % 24:.1f}h  ({hours:.1f}h total)")
+        print(f"still valid: {alive}")
+        if not alive:
+            print("→ token expired somewhere between the last successful check and now.")
+            print("  Re-run 'tokentest --reset' to start a fresh measurement.")
+        return
+
+    account = _pick(label)
+    client = _client(account)
+    try:
+        token = await client.async_login()
+    finally:
+        await client.close()
+    with open(TOKEN_TEST_FILE, "w", encoding="utf-8") as fh:
+        json.dump(
+            {
+                "token": token,
+                "issued_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+            },
+            fh,
+        )
+    print(f"stored a fresh token for longevity testing ({_mask_scalar(token)})")
+    print("Re-run 'python tools/probe_electrica.py tokentest' in a few days.")
+
+
 def _cmd_keys(path: str) -> None:
     with open(path, encoding="utf-8") as fh:
         data = json.load(fh)
@@ -248,6 +306,11 @@ def main() -> None:
         asyncio.run(_cmd_hierarchy(label, raw))
     elif cmd == "probe":
         asyncio.run(_cmd_probe(label, raw))
+    elif cmd == "tokentest":
+        if "--reset" in sys.argv and os.path.exists(TOKEN_TEST_FILE):
+            os.remove(TOKEN_TEST_FILE)
+            print("cleared previous measurement")
+        asyncio.run(_cmd_tokentest(label if label != "--reset" else None))
     elif cmd == "keys":
         if not label:
             raise SystemExit("Usage: probe_electrica.py keys <file>")

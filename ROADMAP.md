@@ -18,6 +18,33 @@
       the current test data has a single point, which is exactly why these
       slipped through.
 
+### Credential handling
+
+Goal: stop persisting the account password once setup has completed.
+
+Home Assistant stores config-entry data in plaintext in `.storage`, and any
+local encryption would need its key on the same machine — so encrypting the
+password there is obfuscation, not protection. The meaningful improvement is to
+**store a session token instead of the password**: a leaked token is scoped to
+Electrica and is invalidated by a password change, whereas a leaked password may
+unlock unrelated accounts through password reuse.
+
+Measured so far (against the live API):
+
+- `/login` returns an opaque 58-character server-side token — not a JWT, so it
+  carries no readable expiry.
+- Every login mints a **new** token, and **older tokens stay valid** — signing in
+  on the mobile app does not evict Home Assistant's session.
+- Token lifetime is still unknown; `tools/probe_electrica.py tokentest` records
+  a token with a timestamp and re-checks it on later runs to measure it.
+
+- [ ] Decide based on the measured lifetime:
+      - **long-lived** → store only the token; drop the password after setup and
+        send the user through the existing reauth flow when it finally expires.
+      - **short-lived** → keep the password (unattended re-login is required),
+        and document plainly that `.storage` must be protected.
+- [ ] Either way: never log the token, and keep it redacted in diagnostics.
+
 ### Features
 
 - [ ] **Select which NLCs to monitor** in the config flow and OptionsFlow.
