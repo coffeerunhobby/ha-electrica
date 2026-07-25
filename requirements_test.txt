@@ -1,0 +1,3 @@
+# Pulls pytest plus a matching Home Assistant, enabling the full suite.
+# The pure parser tests run even without a working HA install.
+pytest-homeassistant-custom-component
