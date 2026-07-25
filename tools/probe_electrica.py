@@ -204,7 +204,13 @@ async def _cmd_probe(label: str | None, raw: bool) -> None:
             json.dump(result, fh, indent=2, ensure_ascii=False, default=str)
         print(f"raw payloads written to {RAW_FILE} (git-ignored)\n")
         for key, value in result.items():
-            print(f"\n===== {key} =====")
+            # Section keys embed the NLC / client code (e.g. "contract:700...").
+            # Mask the identifier so it never reaches the terminal transcript.
+            label = key
+            if ":" in key:
+                prefix, ident = key.split(":", 1)
+                label = f"{prefix}:{_mask_scalar(ident)}"
+            print(f"\n===== {label} =====")
             if value is None:
                 print("  (null / 404)")
                 continue

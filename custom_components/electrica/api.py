@@ -14,13 +14,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import date, timedelta
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Final
 
 import aiohttp
 
 from .const import (
     CLIENT_DATA_URL,
+    HISTORY_LOOKBACK_DAYS,
     CONTRACT_URL,
     CONVENTION_URL,
     HIERARCHY_URL,
@@ -97,7 +99,7 @@ class ElectricaApiClient:
     def _base_headers() -> dict[str, str]:
         return {
             "User-Agent": USER_AGENT,
-            "Accept": "application/json",
+            "Accept": "application/json, text/plain, */*",
             "Content-Type": "application/json",
         }
 
@@ -111,8 +113,12 @@ class ElectricaApiClient:
         return self._token
 
     async def async_login(self) -> str:
-        """Authenticate and cache the bearer token."""
-        payload = {"email": self._username, "password": self._password}
+        """Authenticate and cache the bearer token.
+
+        The API is Romanian-localised: the password field is ``parola``, and a
+        successful body carries ``error: false`` alongside ``app_token``.
+        """
+        payload = {"email": self._username, "parola": self._password}
         try:
             async with self._session.post(LOGIN_URL, json=payload) as resp:
                 if resp.status in (401, 403):
@@ -125,9 +131,14 @@ class ElectricaApiClient:
         except aiohttp.ClientError as err:
             raise ElectricaConnectionError(str(err)) from err
 
+        # The API returns HTTP 200 with ``error: true`` for bad credentials.
+        if isinstance(data, dict) and data.get("error") is True:
+            raise ElectricaAuthError(
+                self._extract_message(data) or "Invalid e-mail or password"
+            )
+
         token = self._extract_token(data)
         if not token:
-            # A 200 without a token means the credentials were refused.
             raise ElectricaAuthError(
                 self._extract_message(data) or "Login failed (no token returned)"
             )
@@ -234,11 +245,37 @@ class ElectricaApiClient:
     async def async_get_convention(self, nlc: str) -> Any:
         return await self._get(CONVENTION_URL.format(nlc=nlc))
 
-    async def async_get_invoices(self, client_code: str, **extra: Any) -> Any:
-        return await self._post(INVOICES_URL, {"client_code": client_code, **extra})
+    @staticmethod
+    def _date_range(lookback_days: int = HISTORY_LOOKBACK_DAYS) -> tuple[str, str]:
+        """(start, end) as YYYY-MM-DD, ending today."""
+        today = date.today()
+        start = today - timedelta(days=lookback_days)
+        return start.isoformat(), today.isoformat()
 
-    async def async_get_payments(self, client_code: str, **extra: Any) -> Any:
-        return await self._post(PAYMENTS_URL, {"client_code": client_code, **extra})
+    async def async_get_invoices(
+        self, client_code: str, *, unpaid_only: bool = False
+    ) -> Any:
+        """Invoice history for a client code (defaults to the last two years)."""
+        start_date, end_date = self._date_range()
+        return await self._get(
+            INVOICES_URL.format(
+                client_code=client_code,
+                start_date=start_date,
+                end_date=end_date,
+                unpaid=str(unpaid_only).lower(),
+            )
+        )
+
+    async def async_get_payments(self, client_code: str) -> Any:
+        """Payment history for a client code (defaults to the last two years)."""
+        start_date, end_date = self._date_range()
+        return await self._get(
+            PAYMENTS_URL.format(
+                client_code=client_code,
+                start_date=start_date,
+                end_date=end_date,
+            )
+        )
 
     async def async_set_index(self, payload: dict[str, Any]) -> Any:
         """Submit a self-read meter index.
@@ -286,12 +323,46 @@ class ElectricaApiClient:
 
         return result
 
+    # Key aliases, compared lower-cased. Electrica's payloads are SAP-derived
+    # (``IdLocConsum``, ``ClientCode``), but spellings vary between endpoints,
+    # so match case-insensitively against a set of known names.
+    _NLC_KEYS: Final = ("idlocconsum", "nlc", "nlc_code", "nlccode", "pod")
+    _CLIENT_KEYS: Final = ("clientcode", "client_code", "cod_client", "codclient")
+
     @staticmethod
-    def extract_points(hierarchy: Any) -> list[ConsumptionPoint]:
+    def _first(node: dict[str, Any], names: tuple[str, ...]) -> str | None:
+        """Return the first non-empty value whose key matches (case-insensitive)."""
+        for key, value in node.items():
+            if key.lower() in names and value not in (None, ""):
+                return str(value)
+        return None
+
+    @staticmethod
+    def format_address(node: dict[str, Any]) -> str | None:
+        """Build a readable address from Electrica's split address fields.
+
+        Electrica returns Street/HouseNumber/Building/Entrance/Floor/RoomNumber
+        as separate keys; joined they make a sensible device name.
+        """
+        get = lambda k: str(node.get(k) or "").strip()  # noqa: E731
+        street = " ".join(x for x in (get("Street"), get("HouseNumber")) if x)
+        parts = [
+            street,
+            f"bl. {get('Building')}" if get("Building") else "",
+            f"sc. {get('Entrance')}" if get("Entrance") else "",
+            f"et. {get('Floor')}" if get("Floor") else "",
+            f"ap. {get('RoomNumber')}" if get("RoomNumber") else "",
+            get("City"),
+        ]
+        joined = ", ".join(p for p in parts if p)
+        return joined or None
+
+    @classmethod
+    def extract_points(cls, hierarchy: Any) -> list[ConsumptionPoint]:
         """Walk the account hierarchy and collect every (client_code, NLC) pair.
 
-        The exact nesting is discovered at runtime, so this walks the structure
-        looking for the identifying keys rather than assuming a fixed shape.
+        The nesting is discovered at runtime rather than assumed, so added levels
+        in the SAP payload do not break discovery.
         """
         points: list[ConsumptionPoint] = []
         seen: set[tuple[str, str]] = set()
@@ -304,30 +375,23 @@ class ElectricaApiClient:
             if not isinstance(node, dict):
                 return
 
-            code = client_code
-            for key in ("client_code", "clientCode", "cod_client", "codClient"):
-                value = node.get(key)
-                if value:
-                    code = str(value)
-                    break
-
-            nlc = None
-            for key in ("nlc", "NLC", "nlc_code", "nlcCode", "pod", "POD"):
-                value = node.get(key)
-                if value:
-                    nlc = str(value)
-                    break
+            # A client code seen at this level applies to everything beneath it.
+            code = cls._first(node, cls._CLIENT_KEYS) or client_code
+            nlc = cls._first(node, cls._NLC_KEYS)
 
             if nlc and code and (code, nlc) not in seen:
                 seen.add((code, nlc))
-                address = None
-                for key in ("address", "adresa", "consumption_address", "adresa_consum"):
-                    value = node.get(key)
-                    if isinstance(value, str) and value:
-                        address = value
-                        break
                 points.append(
-                    ConsumptionPoint(nlc=nlc, client_code=code, address=address)
+                    ConsumptionPoint(
+                        nlc=nlc,
+                        client_code=code,
+                        address=cls.format_address(node),
+                        extra={
+                            k: v
+                            for k, v in node.items()
+                            if not isinstance(v, (dict, list))
+                        },
+                    )
                 )
 
             for value in node.values():

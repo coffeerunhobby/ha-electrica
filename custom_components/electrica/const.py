@@ -43,8 +43,17 @@ LOGIN_URL: Final = f"{BASE_URL}/login"
 HIERARCHY_URL: Final = f"{BASE_URL}/account-data-hierarchy"
 CLIENT_DATA_URL: Final = f"{BASE_URL}/client-data/{{client_code}}"
 CONTRACT_URL: Final = f"{BASE_URL}/contract-nlc-details/{{nlc}}"
-INVOICES_URL: Final = f"{BASE_URL}/client-code-invoices"
-PAYMENTS_URL: Final = f"{BASE_URL}/client-code-payments"
+# Invoices/payments take the date range as path segments (YYYY-MM-DD), and
+# invoices additionally take an "unpaid only" flag as "true"/"false".
+INVOICES_URL: Final = (
+    f"{BASE_URL}/client-code-invoices"
+    "/{client_code}/{start_date}/{end_date}/{unpaid}"
+)
+PAYMENTS_URL: Final = (
+    f"{BASE_URL}/client-code-payments/{{client_code}}/{{start_date}}/{{end_date}}"
+)
+# How far back to ask for invoice/payment history.
+HISTORY_LOOKBACK_DAYS: Final = 730
 METER_LIST_URL: Final = f"{BASE_URL}/meter-list/{{nlc}}"
 READINGS_URL: Final = f"{BASE_URL}/readings/{{client_code}}/{{nlc}}"
 # NB: "consumtion" is Electrica's own spelling in the endpoint path.
