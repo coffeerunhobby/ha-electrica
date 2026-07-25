@@ -104,31 +104,6 @@ trimiterea dacă:
 
 ---
 
-## Dezvoltare
-
-Există un utilitar local (`tools/probe_electrica.py`) care rulează clientul real
-împotriva API-ului Electrica, în afara Home Assistant. Credențialele se pun în
-`tools/.electrica_creds.json` (ignorat de git):
-
-```json
-{ "accounts": [{ "label": "primary", "username": "you@example.com", "password": "..." }] }
-```
-
-Pe Windows folosește wrapperul, care alege automat un Python cu `aiohttp`
-instalat (`python` este adesea interceptat de aliasul din Microsoft Store, iar
-`py` pornește implicit cea mai nouă versiune, care poate să nu aibă dependința):
-
-```
-tools\probe.cmd login
-tools\probe.cmd hierarchy
-tools\probe.cmd probe
-```
-
-> Datele personale sunt mascate implicit în output (NLC, cod client, nume,
-> adresă, e-mail), ca să nu ajungă în loguri sau capturi de ecran.
-
----
-
 ## Confidențialitate
 
 Credențialele sunt stocate local în Home Assistant. Datele personale (NLC, cod
