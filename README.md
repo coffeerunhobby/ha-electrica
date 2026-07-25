@@ -204,5 +204,11 @@ automat din datele de diagnosticare.
 
 [MIT](LICENSE)
 
-Vezi și [THIRD_PARTY_NOTICES.md](custom_components/electrica/THIRD_PARTY_NOTICES.md)
-pentru atribuiri și mențiuni de mărci comerciale.
+## Mărci comerciale
+
+„Electrica" și „Electrica Furnizare" sunt mărci ale deținătorilor de drept.
+Aceasta este o integrare neoficială, dezvoltată de comunitate, fără nicio
+afiliere cu Electrica România.
+
+„Home Assistant" și logo-ul său sunt mărci ale Open Home Foundation. Această
+integrare este o componentă terță, nu un produs oficial Home Assistant.
