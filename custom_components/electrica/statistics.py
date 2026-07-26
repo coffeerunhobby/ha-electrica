@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta
+from itertools import pairwise
 
 from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
 from homeassistant.components.recorder.statistics import async_add_external_statistics
@@ -72,7 +73,7 @@ def daily_series(readings: list[Reading]) -> list[tuple[datetime, float]]:
         (dt_util.start_of_local_day(datetime.combine(first.reading_date, datetime.min.time())), float(first.index))  # type: ignore[arg-type]
     )
 
-    for previous, current in zip(usable, usable[1:]):
+    for previous, current in pairwise(usable):
         start, end = previous.reading_date, current.reading_date
         span = (end - start).days  # type: ignore[operator]
         if span <= 0:

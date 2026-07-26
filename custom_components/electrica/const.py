@@ -12,7 +12,7 @@ ATTRIBUTION: Final = "Date furnizate de myelectrica.ro"
 
 # ── Config / option keys ────────────────────────────────────────────────────
 CONF_USERNAME: Final = "username"
-CONF_PASSWORD: Final = "password"
+CONF_PASSWORD: Final = "password"  # noqa: S105 — a config key name, not a secret
 CONF_CLIENT_CODE: Final = "client_code"
 CONF_NLC_LIST: Final = "nlc_list"
 CONF_UPDATE_INTERVAL: Final = "update_interval"
