@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import logging
 
-from homeassistant.const import Platform
+from homeassistant.const import CONF_PASSWORD, Platform
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_PASSWORD
 from .coordinator import ElectricaConfigEntry, ElectricaCoordinator
 from .crypto import ElectricaCipher, is_encrypted
 from .store import ElectricaReadingStore

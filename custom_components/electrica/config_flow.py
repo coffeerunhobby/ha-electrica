@@ -11,6 +11,7 @@ from typing import Any
 
 import voluptuous as vol
 
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.config_entries import (
     ConfigFlow,
     ConfigFlowResult,
@@ -34,9 +35,7 @@ from .api import (
     ElectricaError,
 )
 from .const import (
-    CONF_PASSWORD,
     CONF_UPDATE_INTERVAL,
-    CONF_USERNAME,
     DEFAULT_UPDATE_INTERVAL_HOURS,
     DOMAIN,
     MAX_UPDATE_INTERVAL_HOURS,

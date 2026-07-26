@@ -6,6 +6,7 @@ import logging
 from datetime import date, timedelta
 from typing import Any
 
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
@@ -20,9 +21,7 @@ from .api import (
     ElectricaError,
 )
 from .const import (
-    CONF_PASSWORD,
     CONF_UPDATE_INTERVAL,
-    CONF_USERNAME,
     DEFAULT_UPDATE_INTERVAL_HOURS,
     DOMAIN,
 )

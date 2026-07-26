@@ -11,8 +11,8 @@ MODEL: Final = "Electrica - cont online"
 ATTRIBUTION: Final = "Date furnizate de myelectrica.ro"
 
 # ── Config / option keys ────────────────────────────────────────────────────
-CONF_USERNAME: Final = "username"
-CONF_PASSWORD: Final = "password"  # noqa: S105 — a config key name, not a secret
+# CONF_USERNAME and CONF_PASSWORD come from homeassistant.const; only keys
+# specific to this integration are defined here.
 CONF_CLIENT_CODE: Final = "client_code"
 CONF_NLC_LIST: Final = "nlc_list"
 CONF_UPDATE_INTERVAL: Final = "update_interval"

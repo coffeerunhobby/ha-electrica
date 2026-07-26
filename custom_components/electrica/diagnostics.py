@@ -10,10 +10,10 @@ from __future__ import annotations
 from dataclasses import asdict, is_dataclass
 from typing import Any
 
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_PASSWORD, CONF_USERNAME
 from .coordinator import ElectricaConfigEntry
 
 TO_REDACT_ENTRY = {CONF_USERNAME, CONF_PASSWORD}
