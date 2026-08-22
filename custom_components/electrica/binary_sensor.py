@@ -22,13 +22,12 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from .const import ATTRIBUTION, DOMAIN, MANUFACTURER, MODEL
 from .coordinator import ElectricaConfigEntry, ElectricaCoordinator
+from .entity import ElectricaPointEntity
 from .models import PointData
 
 _LOGGER = logging.getLogger(__name__)
@@ -99,12 +98,10 @@ async def async_setup_entry(
 
 
 class ElectricaBinarySensor(
-    CoordinatorEntity[ElectricaCoordinator], BinarySensorEntity
+    ElectricaPointEntity, CoordinatorEntity[ElectricaCoordinator], BinarySensorEntity
 ):
     """A binary sensor on a consumption-point device."""
 
-    _attr_has_entity_name = True
-    _attr_attribution = ATTRIBUTION
     entity_description: ElectricaBinaryDescription
 
     def __init__(
@@ -116,29 +113,14 @@ class ElectricaBinarySensor(
     ) -> None:
         super().__init__(coordinator)
         self.entity_description = description
-        self._nlc = nlc
-        self._device_id = f"{config_entry.entry_id}_{nlc}"
+        self._init_point(coordinator, config_entry, nlc)
         self._attr_unique_id = f"{self._device_id}_{description.key}_binary"
-        self.entity_id = f"binary_sensor.{DOMAIN}_{nlc}_{description.key}"
-
-    @property
-    def _point(self) -> PointData | None:
-        return (self.coordinator.data or {}).get(self._nlc)
+        self.entity_id = self._build_entity_id("binary_sensor", description.key)
 
     @property
     def available(self) -> bool:
         return super().available and self._point is not None
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        point = self._point
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._device_id)},
-            name=(point.address if point and point.address else f"NLC {self._nlc}"),
-            manufacturer=MANUFACTURER,
-            model=MODEL,
-            entry_type=DeviceEntryType.SERVICE,
-        )
 
     @property
     def is_on(self) -> bool | None:

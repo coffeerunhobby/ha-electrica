@@ -12,12 +12,11 @@ from typing import Any
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.const import UnitOfEnergy
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import ATTRIBUTION, DOMAIN, MANUFACTURER, MODEL
 from .coordinator import ElectricaConfigEntry, ElectricaCoordinator
+from .entity import ElectricaPointEntity
 
 
 async def async_setup_entry(
@@ -42,11 +41,9 @@ async def async_setup_entry(
     config_entry.async_on_unload(coordinator.async_add_listener(_add_new))
 
 
-class ElectricaReadingNumber(RestoreEntity, NumberEntity):
+class ElectricaReadingNumber(ElectricaPointEntity, RestoreEntity, NumberEntity):
     """The index value staged for the next self-reading submission."""
 
-    _attr_has_entity_name = True
-    _attr_attribution = ATTRIBUTION
     _attr_translation_key = "reading_to_submit"
     _attr_icon = "mdi:numeric"
     _attr_mode = NumberMode.BOX
@@ -62,11 +59,9 @@ class ElectricaReadingNumber(RestoreEntity, NumberEntity):
         config_entry: ElectricaConfigEntry,
         nlc: str,
     ) -> None:
-        self._coordinator = coordinator
-        self._nlc = nlc
-        self._device_id = f"{config_entry.entry_id}_{nlc}"
+        self._init_point(coordinator, config_entry, nlc)
         self._attr_unique_id = f"{self._device_id}_reading_to_submit"
-        self.entity_id = f"number.{DOMAIN}_{nlc}_reading_to_submit"
+        self.entity_id = self._build_entity_id("number", "reading_to_submit")
         self._value: float | None = None
 
     async def async_added_to_hass(self) -> None:
@@ -83,16 +78,6 @@ class ElectricaReadingNumber(RestoreEntity, NumberEntity):
             if point and point.latest_reading and point.latest_reading.index:
                 self._value = float(point.latest_reading.index)
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        point = (self._coordinator.data or {}).get(self._nlc)
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._device_id)},
-            name=(point.address if point and point.address else f"NLC {self._nlc}"),
-            manufacturer=MANUFACTURER,
-            model=MODEL,
-            entry_type=DeviceEntryType.SERVICE,
-        )
 
     @property
     def native_value(self) -> float | None:

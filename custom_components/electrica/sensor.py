@@ -21,13 +21,13 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import UnitOfEnergy
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from .const import ATTRIBUTION, CURRENCY_RON, DOMAIN, MANUFACTURER, MODEL
+from .const import CURRENCY_RON
 from .coordinator import ElectricaConfigEntry, ElectricaCoordinator
+from .entity import ElectricaPointEntity
 from .models import PointData
 
 _LOGGER = logging.getLogger(__name__)
@@ -246,11 +246,11 @@ async def async_setup_entry(
     config_entry.async_on_unload(coordinator.async_add_listener(_add_new))
 
 
-class ElectricaSensor(CoordinatorEntity[ElectricaCoordinator], SensorEntity):
+class ElectricaSensor(
+    ElectricaPointEntity, CoordinatorEntity[ElectricaCoordinator], SensorEntity
+):
     """A sensor on a consumption-point device."""
 
-    _attr_has_entity_name = True
-    _attr_attribution = ATTRIBUTION
     entity_description: ElectricaSensorDescription
 
     def __init__(
@@ -262,31 +262,14 @@ class ElectricaSensor(CoordinatorEntity[ElectricaCoordinator], SensorEntity):
     ) -> None:
         super().__init__(coordinator)
         self.entity_description = description
-        self._nlc = nlc
-        self._device_id = f"{config_entry.entry_id}_{nlc}"
+        self._init_point(coordinator, config_entry, nlc)
         self._attr_unique_id = f"{self._device_id}_{description.key}"
-        # e.g. sensor.electrica_1234567890_amount_due — the NLC is Electrica's
-        # own stable id; the address never appears in the entity_id.
-        self.entity_id = f"sensor.{DOMAIN}_{nlc}_{description.key}"
-
-    @property
-    def _point(self) -> PointData | None:
-        return (self.coordinator.data or {}).get(self._nlc)
+        self.entity_id = self._build_entity_id("sensor", description.key)
 
     @property
     def available(self) -> bool:
         return super().available and self._point is not None
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        point = self._point
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._device_id)},
-            name=(point.address if point and point.address else f"NLC {self._nlc}"),
-            manufacturer=MANUFACTURER,
-            model=MODEL,
-            entry_type=DeviceEntryType.SERVICE,
-        )
 
     @property
     def native_value(self) -> Any:

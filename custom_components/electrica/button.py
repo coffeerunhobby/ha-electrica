@@ -23,13 +23,12 @@ import logging
 from homeassistant.components.button import ButtonEntity
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
-from .const import ATTRIBUTION, DOMAIN, MANUFACTURER, MODEL
+from .const import DOMAIN
 from .coordinator import ElectricaConfigEntry, ElectricaCoordinator
-from .models import PointData
+from .entity import ElectricaPointEntity
 from .store import merge_readings, validate_new_index
 
 _LOGGER = logging.getLogger(__name__)
@@ -61,11 +60,9 @@ async def async_setup_entry(
     config_entry.async_on_unload(coordinator.async_add_listener(_add_new))
 
 
-class ElectricaSubmitReadingButton(ButtonEntity):
+class ElectricaSubmitReadingButton(ElectricaPointEntity, ButtonEntity):
     """Records the staged index, and forwards it to Electrica when permitted."""
 
-    _attr_has_entity_name = True
-    _attr_attribution = ATTRIBUTION
     _attr_translation_key = "submit_reading"
     _attr_icon = "mdi:send-clock"
     _attr_should_poll = False
@@ -76,15 +73,9 @@ class ElectricaSubmitReadingButton(ButtonEntity):
         config_entry: ElectricaConfigEntry,
         nlc: str,
     ) -> None:
-        self._coordinator = coordinator
-        self._nlc = nlc
-        self._device_id = f"{config_entry.entry_id}_{nlc}"
+        self._init_point(coordinator, config_entry, nlc)
         self._attr_unique_id = f"{self._device_id}_submit_reading"
-        self.entity_id = f"button.{DOMAIN}_{nlc}_submit_reading"
-
-    @property
-    def _point(self) -> PointData | None:
-        return (self._coordinator.data or {}).get(self._nlc)
+        self.entity_id = self._build_entity_id("button", "submit_reading")
 
     @property
     def available(self) -> bool:
@@ -92,16 +83,6 @@ class ElectricaSubmitReadingButton(ButtonEntity):
         # the reading locally for the consumption graph.
         return self._point is not None
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        point = self._point
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._device_id)},
-            name=(point.address if point and point.address else f"NLC {self._nlc}"),
-            manufacturer=MANUFACTURER,
-            model=MODEL,
-            entry_type=DeviceEntryType.SERVICE,
-        )
 
     @property
     def extra_state_attributes(self) -> dict[str, str | int | bool | None]:

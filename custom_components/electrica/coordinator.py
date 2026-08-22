@@ -6,8 +6,8 @@ import logging
 from datetime import date, timedelta
 from typing import Any
 
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -27,8 +27,6 @@ from .const import (
 )
 from .crypto import ElectricaCipher, is_encrypted
 from .models import PointData
-from .statistics import async_update_consumption_statistics
-from .store import ElectricaReadingStore, merge_readings
 from .parser import (
     apply_hierarchy,
     parse_contract,
@@ -38,6 +36,8 @@ from .parser import (
     parse_payments,
     parse_readings,
 )
+from .statistics import async_update_consumption_statistics
+from .store import ElectricaReadingStore, merge_readings
 
 _LOGGER = logging.getLogger(__name__)
 
