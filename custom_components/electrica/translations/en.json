@@ -16,6 +16,13 @@
         "data": {
           "password": "Password"
         }
+      },
+      "reconfigure": {
+        "title": "Update Electrica password",
+        "description": "Enter the current password for your myelectrica.ro account.",
+        "data": {
+          "password": "Password"
+        }
       }
     },
     "error": {
@@ -26,7 +33,8 @@
     },
     "abort": {
       "already_configured": "This Electrica account is already configured.",
-      "reauth_successful": "Re-authentication was successful."
+      "reauth_successful": "Re-authentication was successful.",
+      "reconfigure_successful": "Electrica password updated."
     }
   },
   "options": {

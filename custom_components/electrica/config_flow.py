@@ -148,21 +148,27 @@ class ElectricaConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=_user_schema(user_input), errors=errors
         )
 
-    async def async_step_reauth(
-        self, entry_data: dict[str, Any]
-    ) -> ConfigFlowResult:
-        return await self.async_step_reauth_confirm()
+    # ── Re-entering the password ────────────────────────────────────────────
+    #
+    # Two ways in, one form. Re-auth is Home Assistant asking after a refresh
+    # already failed; reconfigure is the user opening it themselves from the
+    # entry's menu, before anything breaks. The account (username) is fixed by
+    # the entry — a different account belongs in its own entry — so both forms
+    # ask only for the password and update the entry in place.
 
-    async def async_step_reauth_confirm(
-        self, user_input: dict[str, Any] | None = None
+    async def _async_replace_password(
+        self,
+        step_id: str,
+        entry: ElectricaConfigEntry,
+        user_input: dict[str, Any] | None,
     ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
-        entry = self._get_reauth_entry()
 
         if user_input is not None:
-            username = entry.data[CONF_USERNAME]
             try:
-                await _validate(self.hass, username, user_input[CONF_PASSWORD])
+                await _validate(
+                    self.hass, entry.data[CONF_USERNAME], user_input[CONF_PASSWORD]
+                )
             except ElectricaAuthError:
                 errors["base"] = "invalid_auth"
             except ElectricaConnectionError:
@@ -181,7 +187,7 @@ class ElectricaConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
 
         return self.async_show_form(
-            step_id="reauth_confirm",
+            step_id=step_id,
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_PASSWORD): TextSelector(
@@ -190,6 +196,32 @@ class ElectricaConfigFlow(ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors=errors,
+        )
+
+    async def async_step_reauth(
+        self, entry_data: dict[str, Any]
+    ) -> ConfigFlowResult:
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        return await self._async_replace_password(
+            "reauth_confirm", self._get_reauth_entry(), user_input
+        )
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Update the password on demand, from the entry's ⋮ menu.
+
+        Re-auth only appears once a refresh has already failed, so someone who
+        changes their Electrica password deliberately would have to wait for
+        the integration to break before they could enter the new one. This
+        offers the same form at any time.
+        """
+        return await self._async_replace_password(
+            "reconfigure", self._get_reconfigure_entry(), user_input
         )
 
     @staticmethod
