@@ -49,6 +49,13 @@ repornește Home Assistant.
 e-mailul și parola contului myelectrica.ro. Toate locurile de consum sunt
 descoperite automat.
 
+### Schimbarea parolei
+
+Dacă îți schimbi parola pe myelectrica.ro, actualizeaz-o în Home Assistant din
+**Settings → Devices & Services → Electrica → ⋮ → Reconfigure**. Intrarea este
+actualizată pe loc: istoricul, id-urile entităților și setările rămân
+neschimbate. Parola este stocată criptat, ca la prima configurare.
+
 ---
 
 ## Entități
