@@ -130,6 +130,8 @@ class ElectricaApiClient:
                 data = await self._decode(resp)
         except aiohttp.ClientError as err:
             raise ElectricaConnectionError(str(err)) from err
+        except TimeoutError as err:
+            raise ElectricaConnectionError("Electrica did not answer the login in time") from err
 
         # The API returns HTTP 200 with ``error: true`` for bad credentials.
         if isinstance(data, dict) and data.get("error") is True:
@@ -214,6 +216,9 @@ class ElectricaApiClient:
                     return await self._decode(resp)
             except aiohttp.ClientError as err:
                 raise ElectricaConnectionError(str(err)) from err
+            except TimeoutError as err:
+                # The URL is not named: it carries the account and point numbers.
+                raise ElectricaConnectionError("Electrica did not answer in time") from err
 
         raise ElectricaAuthError("Could not authenticate with Electrica")
 

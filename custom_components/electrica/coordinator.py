@@ -141,50 +141,50 @@ class ElectricaCoordinator(DataUpdateCoordinator[dict[str, PointData]]):
         if not points:
             raise UpdateFailed("No consumption points (NLC) found on this account")
 
+        # A failure on one client code or one point must not blank the whole
+        # account: whatever did refresh is published, a point that failed keeps
+        # its last good data, and the update fails only when nothing refreshed.
+        # Auth errors still abort everything, since they need the user.
+        previous: dict[str, PointData] = self.data or {}
+
         # Invoices/payments are per client code — fetch each once and share it
         # across the NLCs beneath it rather than re-requesting per point.
         client_codes = {p.client_code for p in points}
         invoices_by_client: dict[str, Any] = {}
         payments_by_client: dict[str, Any] = {}
+        failed_clients: set[str] = set()
         for code in client_codes:
-            invoices_by_client[code] = parse_invoices(
-                await api.async_get_invoices(code)
-            )
-            payments_by_client[code] = parse_payments(
-                await api.async_get_payments(code)
-            )
+            try:
+                invoices_by_client[code] = parse_invoices(
+                    await api.async_get_invoices(code)
+                )
+                payments_by_client[code] = parse_payments(
+                    await api.async_get_payments(code)
+                )
+            except ElectricaAuthError:
+                raise
+            except ElectricaError as err:
+                _LOGGER.warning("Electrica invoices/payments not refreshed: %s", err)
+                failed_clients.add(code)
 
         result: dict[str, PointData] = {}
+        refreshed = 0
         for point in points:
-            data = PointData(
-                nlc=point.nlc,
-                client_code=point.client_code,
-                address=point.address,
-            )
-            apply_hierarchy(data, hierarchy)
-
-            data.contract = parse_contract(await api.async_get_contract(point.nlc))
-            meter = parse_meter(await api.async_get_meter_list(point.nlc))
-            data.meter_serial = meter.get("meter_serial")
-            # meter-list is authoritative for the PAC window; the hierarchy is
-            # only a fallback (applied above).
-            data.pac_start = meter.get("pac_start") or data.pac_start
-            data.pac_end = meter.get("pac_end") or data.pac_end
-            data.pac_available = bool(meter.get("pac_available"))
-
-            data.readings = parse_readings(
-                await api.async_get_readings(point.client_code, point.nlc)
-            )
-            data.convention = parse_convention(
-                await api.async_get_convention(point.nlc)
-            )
-
-            all_invoices = invoices_by_client.get(point.client_code) or []
-            # Invoices carry the NLC they belong to; when several NLCs share a
-            # client code, keep only this point's (fall back to all if unset).
-            own = [i for i in all_invoices if i.nlc and str(i.nlc) == point.nlc]
-            data.invoices = own or all_invoices
-            data.payments = payments_by_client.get(point.client_code) or []
+            if point.client_code in failed_clients:
+                if point.nlc in previous:
+                    result[point.nlc] = previous[point.nlc]
+                continue
+            try:
+                data = await self._fetch_point(
+                    api, point, hierarchy, invoices_by_client, payments_by_client
+                )
+            except ElectricaAuthError:
+                raise
+            except ElectricaError as err:
+                _LOGGER.warning("Electrica consumption point not refreshed: %s", err)
+                if point.nlc in previous:
+                    result[point.nlc] = previous[point.nlc]
+                continue
 
             # Meter index → Energy Dashboard (interpolated to daily points).
             async_update_consumption_statistics(
@@ -193,10 +193,50 @@ class ElectricaCoordinator(DataUpdateCoordinator[dict[str, PointData]]):
                 data.address or point.nlc,
                 merge_readings(data.readings, store.local_readings(point.nlc)),
             )
-
             result[point.nlc] = data
+            refreshed += 1
 
+        if not refreshed:
+            raise UpdateFailed("No Electrica consumption point could be refreshed")
         return result
+
+    async def _fetch_point(
+        self,
+        api: ElectricaApiClient,
+        point: Any,
+        hierarchy: Any,
+        invoices_by_client: dict[str, Any],
+        payments_by_client: dict[str, Any],
+    ) -> PointData:
+        """Fetch everything for one consumption point."""
+        data = PointData(
+            nlc=point.nlc,
+            client_code=point.client_code,
+            address=point.address,
+        )
+        apply_hierarchy(data, hierarchy)
+
+        data.contract = parse_contract(await api.async_get_contract(point.nlc))
+        meter = parse_meter(await api.async_get_meter_list(point.nlc))
+        data.meter_serial = meter.get("meter_serial")
+        # meter-list is authoritative for the PAC window; the hierarchy is
+        # only a fallback (applied above).
+        data.pac_start = meter.get("pac_start") or data.pac_start
+        data.pac_end = meter.get("pac_end") or data.pac_end
+        data.pac_available = bool(meter.get("pac_available"))
+
+        data.readings = parse_readings(
+            await api.async_get_readings(point.client_code, point.nlc)
+        )
+        data.convention = parse_convention(await api.async_get_convention(point.nlc))
+
+        all_invoices = invoices_by_client.get(point.client_code) or []
+        # Invoices carry the NLC they belong to; when several NLCs share a
+        # client code, keep only this point's (fall back to all if unset).
+        own = [i for i in all_invoices if i.nlc and str(i.nlc) == point.nlc]
+        data.invoices = own or all_invoices
+        data.payments = payments_by_client.get(point.client_code) or []
+        return data
 
     @property
     def today(self) -> date:
