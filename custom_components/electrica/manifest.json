@@ -4,6 +4,7 @@
   "after_dependencies": [
     "recorder"
   ],
+  "categories": ["energy.meters_monitoring"],
   "codeowners": [
     "@coffeerunhobby"
   ],
