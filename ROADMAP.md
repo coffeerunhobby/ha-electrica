@@ -79,8 +79,12 @@ Confirmed by inspecting the official Android app (v4.0.4):
 
 Discovered while mapping the API; recorded so nobody re-investigates them:
 
-- `/api/download/sap/…`, `/api/download/open/…` — invoice PDF fetch (we already
-  surface `DownloadPDFUrl`).
+- `/api/download/sap/…`, `/api/download/open/…` — invoice PDF fetch. The
+  `DownloadPDFUrl` field is a relative key that only opens with the bearer token
+  (checked 2026-10-31: HTTP 405 without it, the PDF with it). It is not exposed
+  as an attribute: state attributes are visible to every Home Assistant user and
+  the key cannot be opened from the UI anyway. Serving PDFs would need an
+  authenticated Home Assistant view.
 - `/api/gdpr`, `/api/gdpr/{client_code}` — personal-data export.
 - `/api/adauga-cod-client`, `/api/electronic-mail-options` — account admin.
 - **Never implement:** `/api/request-plata` (initiates a payment),

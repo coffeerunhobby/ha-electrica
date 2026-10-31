@@ -23,6 +23,7 @@ import logging
 from homeassistant.components.button import ButtonEntity
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
@@ -111,7 +112,12 @@ class ElectricaSubmitReadingButton(ElectricaPointEntity, ButtonEntity):
         if point is None or store is None:
             raise HomeAssistantError("Consumption point is not available")
 
-        state = self.hass.states.get(f"number.{DOMAIN}_{self._nlc}_reading_to_submit")
+        # Resolved by unique id, so a user renaming the number entity does not
+        # break the button.
+        number_id = er.async_get(self.hass).async_get_entity_id(
+            "number", DOMAIN, f"{self._device_id}_reading_to_submit"
+        )
+        state = self.hass.states.get(number_id) if number_id else None
         try:
             index = float(state.state) if state else None
         except (TypeError, ValueError):

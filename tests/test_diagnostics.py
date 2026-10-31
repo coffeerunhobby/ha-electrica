@@ -58,7 +58,6 @@ def _entry() -> SimpleNamespace:
             total=15.15,
             unpaid=15.15,
             status="neachitat",
-            pdf_url="https://example.com/canary-pdf",
         )
     ]
     return SimpleNamespace(
@@ -93,7 +92,6 @@ async def test_customer_and_metering_identifiers_are_redacted():
         "canary-meter-serial",
         "canary-fiscal-number",
         "canary-invoice-id",
-        "canary-pdf",
     ):
         assert marker not in rendered, f"{marker} leaked into diagnostics"
 

@@ -86,7 +86,6 @@ def _invoice_attrs(point: PointData) -> dict[str, Any]:
         "issue_date": _iso(latest.issue_date) if latest else None,
         "due_date": _iso(latest.due_date) if latest else None,
         "status": latest.status if latest else None,
-        "pdf_url": latest.pdf_url if latest else None,
         "unpaid_invoices": len(point.unpaid_invoices),
         "history": [
             {

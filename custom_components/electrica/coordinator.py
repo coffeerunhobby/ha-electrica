@@ -41,6 +41,9 @@ from .store import ElectricaReadingStore, merge_readings
 
 _LOGGER = logging.getLogger(__name__)
 
+# How soon to try again after an update failed for a reason other than auth.
+RETRY_AFTER_FAILURE = timedelta(minutes=15)
+
 type ElectricaConfigEntry = ConfigEntry["ElectricaCoordinator"]
 
 
@@ -79,10 +82,6 @@ class ElectricaCoordinator(DataUpdateCoordinator[dict[str, PointData]]):
         if not is_encrypted(stored):
             return stored
         cipher = await ElectricaCipher.async_load(self.hass)
-        if cipher is None:
-            raise ConfigEntryAuthFailed(
-                "The stored password is encrypted but cryptography is unavailable"
-            )
         try:
             return cipher.decrypt(stored)
         except ValueError as err:
@@ -108,11 +107,26 @@ class ElectricaCoordinator(DataUpdateCoordinator[dict[str, PointData]]):
     async def _async_update_data(self) -> dict[str, PointData]:
         api = await self._async_ensure_api()
         try:
-            return await self._fetch(api)
+            data = await self._fetch(api)
         except ElectricaAuthError as err:
             raise ConfigEntryAuthFailed(str(err)) from err
         except (ElectricaConnectionError, ElectricaError) as err:
+            self._retry_soon()
             raise UpdateFailed(str(err)) from err
+        except UpdateFailed:
+            self._retry_soon()
+            raise
+        self.update_interval = timedelta(hours=self._interval_hours)
+        return data
+
+    def _retry_soon(self) -> None:
+        """Try again shortly instead of a full interval later.
+
+        A single transient failure (a timeout, a brief outage) would otherwise
+        leave every entity unavailable for hours. The configured interval is
+        restored after the next successful update.
+        """
+        self.update_interval = min(RETRY_AFTER_FAILURE, timedelta(hours=self._interval_hours))
 
     async def _ensure_store(self) -> ElectricaReadingStore:
         if self.reading_store is None:

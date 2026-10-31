@@ -55,21 +55,13 @@ class ElectricaCipher:
         return Fernet.generate_key().decode()
 
     @classmethod
-    async def async_load(cls, hass: HomeAssistant) -> ElectricaCipher | None:
+    async def async_load(cls, hass: HomeAssistant) -> ElectricaCipher:
         """Load the key from its own store, creating one on first use.
 
-        Returns None when `cryptography` is unavailable, so callers can fall back
-        to storing the password as-is rather than failing setup outright.
+        There is deliberately no plaintext fallback: `cryptography` is a hard
+        requirement of Home Assistant core, and a password that cannot be
+        encrypted is not stored.
         """
-        try:
-            from cryptography.fernet import Fernet  # noqa: F401
-        except ImportError:  # pragma: no cover - cryptography ships with core
-            _LOGGER.warning(
-                "cryptography is unavailable; the Electrica password will be "
-                "stored without at-rest encryption"
-            )
-            return None
-
         store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, STORAGE_KEY_SECRET, private=True
         )

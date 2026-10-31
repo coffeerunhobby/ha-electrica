@@ -39,7 +39,6 @@ TO_REDACT_DATA = {
     "fiscal_number",
     "invoice_id",
     "invoice_number",
-    "pdf_url",
 }
 
 

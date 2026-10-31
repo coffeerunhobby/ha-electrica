@@ -76,14 +76,14 @@ def _user_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
 
 
 async def _store_password(hass, password: str) -> str:
-    """Encrypt the password for storage, falling back to plaintext.
+    """Encrypt the password for storage; it is never stored in the clear.
 
     Home Assistant persists config entries as plaintext JSON, so this protects
     against partial exposure (a shared `core.config_entries`, a single-file
     backup) rather than against full filesystem access — see crypto.py.
     """
     cipher = await ElectricaCipher.async_load(hass)
-    return cipher.encrypt(password) if cipher else password
+    return cipher.encrypt(password)
 
 
 async def _validate(hass, username: str, password: str) -> int:

@@ -80,7 +80,6 @@ def parse_invoices(payload: Any) -> list[Invoice]:
             unpaid=to_float(_get(row, "UnpaidValue", "unpaid_value")) or 0.0,
             status=_get(row, "InvoiceStatus", "invoice_status"),
             invoice_type=_get(row, "InvoiceType", "invoice_type"),
-            pdf_url=_get(row, "DownloadPDFUrl", "download_pdf_url"),
             nlc=_get(row, "nlcField", "nlc"),
         )
         for row in _as_list(payload)

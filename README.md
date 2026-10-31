@@ -64,7 +64,7 @@ Fiecare **loc de consum (NLC)** este un dispozitiv separat.
 
 | Entitate | Descriere |
 | --- | --- |
-| `Amount due` | Sold de plată (RON); atribute: factură curentă, PDF, istoric |
+| `Amount due` | Sold de plată (RON); atribute: factură curentă, istoric |
 | `Last invoice` | Valoarea ultimei facturi (RON) |
 | `Due date` | Scadența ultimei facturi |
 | `Overdue` | `yes` / `no` — există facturi neachitate |

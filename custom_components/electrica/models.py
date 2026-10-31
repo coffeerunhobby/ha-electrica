@@ -78,7 +78,6 @@ class Invoice:
     unpaid: float | None
     status: str | None
     invoice_type: str | None = None
-    pdf_url: str | None = None
     nlc: str | None = None
 
     @property

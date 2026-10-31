@@ -33,8 +33,6 @@ async def _async_migrate_password(
     if not stored or is_encrypted(stored):
         return
     cipher = await ElectricaCipher.async_load(hass)
-    if cipher is None:
-        return
     hass.config_entries.async_update_entry(
         entry, data={**entry.data, CONF_PASSWORD: cipher.encrypt(stored)}
     )

@@ -53,6 +53,11 @@ def _metadata(stat_id: str, name: str) -> StatisticMetaData:
         metadata["mean_type"] = StatisticMeanType.NONE
     except ImportError:
         metadata["has_mean"] = False
+    # Home Assistant 2025.11 added unit_class and, from 2026.11, no longer derives
+    # it for us. Releases before 2025.11 reject unknown metadata keys, so it is
+    # only sent where the metadata type declares it. kWh is an "energy" unit.
+    if "unit_class" in StatisticMetaData.__annotations__:
+        metadata["unit_class"] = "energy"
     return metadata
 
 
