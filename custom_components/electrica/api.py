@@ -307,7 +307,23 @@ class ElectricaApiClient:
             ],
         }
         _LOGGER.debug("Submitting self-read index for NLC %s", nlc)
-        return await self._post(SET_INDEX_URL, payload)
+        data = await self._post(SET_INDEX_URL, payload)
+        # Only a confirmed submission may be recorded as sent.
+        if data is None:
+            raise ElectricaError("Electrica did not accept the reading (HTTP 404)")
+        if isinstance(data, dict):
+            if data.get("error") is True:
+                raise ElectricaError(
+                    self._extract_message(data) or "Electrica rejected the reading"
+                )
+            # ``status`` is not a success flag: healthy responses carry "0" or "1".
+            http_code = data.get("httpCode")
+            if http_code not in (None, "") and not str(http_code).startswith("2"):
+                raise ElectricaError(
+                    self._extract_message(data)
+                    or f"Electrica rejected the reading (code {http_code})"
+                )
+        return data
 
     # ── Convenience ─────────────────────────────────────────────────────────
     async def async_probe_all(self, pause: float = 0.2) -> dict[str, Any]:

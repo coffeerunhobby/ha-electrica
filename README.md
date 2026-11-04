@@ -105,6 +105,7 @@ Butonul poate fi apăsat **oricând**, nu doar în perioada de autocitire:
 | Apeși în perioada de autocitire, prima dată | Indexul e salvat local **și trimis la Electrica** |
 | Apeși din nou în aceeași perioadă | Doar salvat local — **nu se retrimite** la Electrica |
 | Apeși în afara perioadei | Doar salvat local |
+| Electrica refuză indexul sau nu răspunde | Salvat local, dar **nu e marcat ca trimis**: vezi eroarea și poți apăsa din nou |
 
 Electrica acceptă o singură autocitire per perioadă, așa că integrarea ține
 evidența perioadelor deja trimise (după data de final a ferestrei) și nu

@@ -27,6 +27,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
+from .api import ElectricaConnectionError, ElectricaError
 from .const import DOMAIN
 from .coordinator import ElectricaConfigEntry, ElectricaCoordinator
 from .entity import ElectricaPointEntity
@@ -154,9 +155,22 @@ class ElectricaSubmitReadingButton(ElectricaPointEntity, ButtonEntity):
             if api is None:
                 raise HomeAssistantError("Electrica API client is not ready")
 
-            await api.async_set_index(
-                self._nlc, point.meter_serial, register, int(index)
-            )
+            try:
+                await api.async_set_index(
+                    self._nlc, point.meter_serial, register, int(index)
+                )
+            except ElectricaConnectionError as err:
+                # Kept locally but not marked as sent, so a later press can retry.
+                await store.async_save()
+                raise HomeAssistantError(
+                    "No answer from Electrica; the reading may still have arrived. "
+                    "Check myElectrica before pressing again"
+                ) from err
+            except ElectricaError as err:
+                await store.async_save()
+                raise HomeAssistantError(
+                    f"Electrica did not accept the reading: {err}"
+                ) from err
             store.mark_submitted(
                 self._nlc, point.pac_end, index, dt_util.now().isoformat()
             )

@@ -79,3 +79,68 @@ def test_statistics_metadata_declares_the_unit_class_where_known():
         assert metadata["unit_class"] == "energy"
     else:
         assert "unit_class" not in metadata
+
+
+@pytest.mark.parametrize(
+    ("response", "accepted"),
+    [
+        (None, False),
+        ({"error": True, "message": "Index invalid"}, False),
+        ({"status": "1", "httpCode": "500", "body": {}}, False),
+        ({"status": "1", "httpCode": "200", "body": {"response": {}}}, True),
+    ],
+)
+async def test_a_submission_counts_only_when_electrica_confirms_it(response, accepted):
+    from unittest.mock import AsyncMock, MagicMock
+
+    from custom_components.electrica.api import ElectricaApiClient, ElectricaError
+
+    api = ElectricaApiClient("user@example.com", "synthetic-password", session=MagicMock())
+    api._post = AsyncMock(return_value=response)
+    if accepted:
+        assert await api.async_set_index(NLC, "SYNTH-METER", "1.8.0", 800) == response
+    else:
+        with pytest.raises(ElectricaError):
+            await api.async_set_index(NLC, "SYNTH-METER", "1.8.0", 800)
+
+
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [("rejected", "did not accept the reading"), ("timeout", "may still have arrived")],
+)
+async def test_a_failed_submission_is_not_recorded_as_sent(
+    hass: HomeAssistant, loaded, error, message
+):
+    from unittest.mock import AsyncMock
+
+    from homeassistant.exceptions import HomeAssistantError
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.electrica.api import ElectricaConnectionError, ElectricaError
+
+    coordinator = loaded.runtime_data
+    point = coordinator.data[NLC]
+    today = dt_util.now().date()
+    point.pac_start, point.pac_end = today - timedelta(days=1), today + timedelta(days=1)
+    failure = ElectricaConnectionError("timed out") if error == "timeout" else ElectricaError("Index invalid")
+    coordinator.api.async_set_index = AsyncMock(side_effect=failure)
+
+    async def press():
+        await hass.services.async_call(
+            "button", "press", {"entity_id": f"button.{DOMAIN}_{NLC}_submit_reading"}, blocking=True
+        )
+
+    await hass.services.async_call(
+        "number", "set_value", {"entity_id": f"number.{DOMAIN}_{NLC}_reading_to_submit", "value": 800},
+        blocking=True,
+    )
+    with pytest.raises(HomeAssistantError, match=message):
+        await press()
+    store = coordinator.reading_store
+    assert not store.already_submitted(NLC, point.pac_end)
+    assert [r["index"] for r in store.local_readings(NLC)] == [800.0]
+
+    # The next press retries, and a confirmed send is recorded.
+    coordinator.api.async_set_index = AsyncMock(return_value={"status": "0", "httpCode": "200"})
+    await press()
+    assert store.already_submitted(NLC, point.pac_end)
